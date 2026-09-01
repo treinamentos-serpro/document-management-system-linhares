@@ -1,7 +1,7 @@
 ---
 description: Agente de revisão de código focado em qualidade, SOLID, code smells e segurança.
 name: code-reviewer
-tools: ['search', 'codebase', 'usages', 'problems']
+tools: [read/problems, read/readFile, vscodeTasks/problems, vscodeGeneral/usages, search]
 handoffs:
   - label: Aplicar refatoração
     agent: agent
