@@ -11,9 +11,30 @@
 // usando multer com diskStorage. Não utilize provedores externos.
 
 const express = require('express');
+const path = require('node:path');
+const { createDocumentsController } = require('./controllers/documents.controller');
+const { createDocumentsRepository } = require('./repositories/documents.repository');
+const { createDocumentsRouter } = require('./routes/documents.routes');
+const { createDocumentsService } = require('./services/documents.service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '..', 'storage');
+const maxFileSizeBytes = Number(process.env.MAX_FILE_SIZE_BYTES || 10 * 1024 * 1024);
+
+if (!Number.isSafeInteger(maxFileSizeBytes) || maxFileSizeBytes <= 0) {
+  throw new Error('MAX_FILE_SIZE_BYTES deve ser um numero inteiro positivo.');
+}
+
+const documentsRepository = createDocumentsRepository({
+  storagePath,
+  maxFileSizeBytes,
+});
+const documentsService = createDocumentsService(documentsRepository);
+const documentsController = createDocumentsController(
+  documentsService,
+  documentsRepository.removeFile,
+);
 
 app.use(express.json());
 
@@ -22,6 +43,8 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+app.use(createDocumentsRouter(documentsController, documentsRepository.uploadSingle));
 
 if (require.main === module) {
   app.listen(PORT, () => {
