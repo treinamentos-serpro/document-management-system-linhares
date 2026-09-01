@@ -17,34 +17,35 @@ const { createDocumentsRepository } = require('./repositories/documents.reposito
 const { createDocumentsRouter } = require('./routes/documents.routes');
 const { createDocumentsService } = require('./services/documents.service');
 
-const app = express();
 const PORT = process.env.PORT || 3000;
-const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '..', 'storage');
-const maxFileSizeBytes = Number(process.env.MAX_FILE_SIZE_BYTES || 10 * 1024 * 1024);
 
-if (!Number.isSafeInteger(maxFileSizeBytes) || maxFileSizeBytes <= 0) {
-  throw new Error('MAX_FILE_SIZE_BYTES deve ser um numero inteiro positivo.');
+function createApp({
+  storagePath = process.env.STORAGE_PATH || path.join(__dirname, '..', 'storage'),
+  maxFileSizeBytes = Number(process.env.MAX_FILE_SIZE_BYTES || 10 * 1024 * 1024),
+} = {}) {
+  if (!Number.isSafeInteger(maxFileSizeBytes) || maxFileSizeBytes <= 0) {
+    throw new Error('MAX_FILE_SIZE_BYTES deve ser um numero inteiro positivo.');
+  }
+
+  const app = express();
+  const documentsRepository = createDocumentsRepository({
+    storagePath,
+    maxFileSizeBytes,
+  });
+  const documentsService = createDocumentsService(documentsRepository);
+  const documentsController = createDocumentsController(documentsService);
+
+  app.use(express.json());
+
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  app.use(createDocumentsRouter(documentsController, documentsRepository.uploadSingle));
+  return app;
 }
 
-const documentsRepository = createDocumentsRepository({
-  storagePath,
-  maxFileSizeBytes,
-});
-const documentsService = createDocumentsService(documentsRepository);
-const documentsController = createDocumentsController(
-  documentsService,
-  documentsRepository.removeFile,
-);
-
-app.use(express.json());
-
-// Endpoint de verificação de saúde. As demais rotas (/upload, /documents,
-// /documents/:id/download) serão implementadas durante o Passo 2.
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.use(createDocumentsRouter(documentsController, documentsRepository.uploadSingle));
+const app = createApp();
 
 if (require.main === module) {
   app.listen(PORT, () => {
@@ -53,3 +54,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+module.exports.createApp = createApp;

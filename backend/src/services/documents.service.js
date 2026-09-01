@@ -42,7 +42,16 @@ function createDocumentsService(documentsRepository) {
         owner: validOwner,
       };
 
-      return toPublicDocument(documentsRepository.save(document));
+      try {
+        return toPublicDocument(documentsRepository.save(document));
+      } catch (error) {
+        try {
+          documentsRepository.removeFile(file.path);
+        } catch {
+          // Preserva a falha de persistencia como a causa principal da resposta.
+        }
+        throw error;
+      }
     },
     listDocuments(owner) {
       const validOwner = validateOwner(owner);

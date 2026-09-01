@@ -10,7 +10,7 @@ function sendError(response, error, fallbackCode, fallbackMessage) {
   });
 }
 
-function createDocumentsController(documentsService, removeFile) {
+function createDocumentsController(documentsService) {
   return {
     upload(request, response) {
       try {
@@ -20,9 +20,6 @@ function createDocumentsController(documentsService, removeFile) {
         );
         response.status(201).json(document);
       } catch (error) {
-        if (request.file) {
-          removeFile(request.file.path);
-        }
         sendError(response, error, 'UPLOAD_FAILED', 'Falha ao enviar o documento.');
       }
     },
@@ -44,7 +41,11 @@ function createDocumentsController(documentsService, removeFile) {
           request.params.id,
           request.get('X-User-Id'),
         );
-        response.download(filePath, document.originalName);
+        response.download(filePath, document.originalName, (error) => {
+          if (error && !response.headersSent) {
+            sendError(response, error, 'DOWNLOAD_FAILED', 'Falha ao baixar o documento.');
+          }
+        });
       } catch (error) {
         sendError(response, error, 'DOWNLOAD_FAILED', 'Falha ao baixar o documento.');
       }

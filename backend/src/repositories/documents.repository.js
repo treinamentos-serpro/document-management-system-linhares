@@ -5,6 +5,7 @@ const multer = require('multer');
 
 function createDocumentsRepository({ storagePath, maxFileSizeBytes }) {
   fs.mkdirSync(storagePath, { recursive: true });
+  const resolvedStoragePath = path.resolve(storagePath);
 
   const documents = [];
   const storage = multer.diskStorage({
@@ -16,7 +17,13 @@ function createDocumentsRepository({ storagePath, maxFileSizeBytes }) {
 
   const upload = multer({
     storage,
-    limits: { fileSize: maxFileSizeBytes },
+    limits: {
+      fileSize: maxFileSizeBytes,
+      files: 1,
+      fields: 10,
+      parts: 11,
+      fieldSize: 10 * 1024,
+    },
   });
 
   return {
@@ -34,7 +41,11 @@ function createDocumentsRepository({ storagePath, maxFileSizeBytes }) {
       );
     },
     getFilePath(document) {
-      return path.join(storagePath, document.storedName);
+      const filePath = path.resolve(resolvedStoragePath, document.storedName);
+      if (!filePath.startsWith(`${resolvedStoragePath}${path.sep}`)) {
+        throw new Error('Nome interno de arquivo invalido.');
+      }
+      return filePath;
     },
     fileExists(filePath) {
       return fs.existsSync(filePath);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DocumentList from './components/DocumentList.jsx';
 import UploadComponent from './components/UploadComponent.jsx';
 import {
@@ -12,40 +12,57 @@ export default function App() {
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('Informe seu identificador para gerenciar documentos.');
+  const activeUserIdRef = useRef('');
 
   useEffect(() => {
+    activeUserIdRef.current = userId.trim();
     setDocuments([]);
+    setIsLoading(false);
     setMessage(userId.trim()
       ? 'Atualize a lista para consultar seus documentos.'
       : 'Informe seu identificador para gerenciar documentos.');
   }, [userId]);
 
   async function loadDocuments() {
-    if (!userId.trim()) {
+    const requestedUserId = userId.trim();
+    if (!requestedUserId) {
       setMessage('Informe seu identificador de usuário.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const listedDocuments = await listDocuments(userId.trim());
+      const listedDocuments = await listDocuments(requestedUserId);
+      if (activeUserIdRef.current !== requestedUserId) {
+        return;
+      }
       setDocuments(listedDocuments);
       setMessage(`${listedDocuments.length} documento(s) encontrado(s).`);
     } catch (error) {
-      setMessage(error.message);
+      if (activeUserIdRef.current === requestedUserId) {
+        setMessage(error.message);
+      }
     } finally {
-      setIsLoading(false);
+      if (activeUserIdRef.current === requestedUserId) {
+        setIsLoading(false);
+      }
     }
   }
 
   async function handleUpload(file) {
+    const requestedUserId = userId.trim();
     try {
-      const document = await uploadDocument(userId.trim(), file);
+      const document = await uploadDocument(requestedUserId, file);
+      if (activeUserIdRef.current !== requestedUserId) {
+        return false;
+      }
       setDocuments((currentDocuments) => [document, ...currentDocuments]);
       setMessage('Documento enviado com sucesso.');
       return true;
     } catch (error) {
-      setMessage(error.message);
+      if (activeUserIdRef.current === requestedUserId) {
+        setMessage(error.message);
+      }
       return false;
     }
   }
